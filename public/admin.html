@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>管理后台 - 大转盘抽奖</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f0f2f5; color: #333; min-height: 100vh; }
+button { cursor: pointer; border: none; background: none; font: inherit; }
+input, select { font: inherit; }
+
+/* Login */
+.login-page { display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+.login-card { background: #fff; border-radius: 12px; padding: 40px; width: 360px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); text-align: center; }
+.login-card h2 { margin-bottom: 24px; font-size: 20px; }
+.login-card input { width: 100%; padding: 12px 16px; border: 1px solid #ddd; border-radius: 8px; font-size: 15px; margin-bottom: 16px; }
+.login-card input:focus { outline: none; border-color: #4A90D9; }
+.login-card button { width: 100%; padding: 12px; background: #4A90D9; color: #fff; border-radius: 8px; font-size: 15px; font-weight: 600; }
+.login-card button:hover { background: #357ABD; }
+.login-error { color: #E74C3C; font-size: 13px; margin-bottom: 12px; display: none; }
+
+/* Admin Layout */
+.admin-page { display: none; }
+.admin-header { background: #fff; padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #e0e4e8; position: sticky; top: 0; z-index: 10; }
+.admin-header h1 { font-size: 18px; }
+.admin-header button { font-size: 13px; color: #888; padding: 6px 14px; border: 1px solid #ddd; border-radius: 6px; }
+.admin-body { max-width: 800px; margin: 0 auto; padding: 24px 16px; }
+
+/* Sections */
+.section { background: #fff; border-radius: 12px; padding: 24px; margin-bottom: 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.04); }
+.section h2 { font-size: 16px; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid #f0f0f0; }
+
+/* Award Editor */
+.award-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid #f5f5f5; }
+.award-row:last-child { border-bottom: none; }
+.color-pick { width: 36px; height: 36px; border-radius: 8px; border: 2px solid #e0e4e8; position: relative; overflow: hidden; flex-shrink: 0; }
+.color-pick input[type="color"] { position: absolute; inset: -6px; width: 48px; height: 48px; border: none; cursor: pointer; }
+.award-name { flex: 1; padding: 8px 12px; border: 1px solid #e0e4e8; border-radius: 6px; font-size: 14px; min-width: 0; }
+.award-name:focus { outline: none; border-color: #4A90D9; }
+.weight-ctrl { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.weight-ctrl input[type="range"] { width: 80px; accent-color: #4A90D9; }
+.weight-ctrl span { font-size: 13px; color: #888; min-width: 28px; text-align: center; }
+.award-del { color: #E74C3C; font-size: 20px; padding: 4px 8px; flex-shrink: 0; }
+
+.btn-row { display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
+.btn { padding: 10px 20px; border-radius: 8px; font-size: 14px; font-weight: 500; transition: all .2s; }
+.btn-primary { background: #4A90D9; color: #fff; }
+.btn-primary:hover { background: #357ABD; }
+.btn-outline { background: #fff; color: #4A90D9; border: 1px solid #4A90D9; }
+.btn-outline:hover { background: #f0f6ff; }
+.btn-danger { background: #fff; color: #E74C3C; border: 1px solid #E74C3C; }
+.btn-danger:hover { background: #fef0ef; }
+.btn-ghost { background: #f5f5f5; color: #666; }
+
+/* Force Queue */
+.queue-item { display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: #f8f9fa; border-radius: 8px; margin-bottom: 6px; }
+.queue-num { color: #888; font-size: 12px; min-width: 22px; }
+.queue-dot { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
+.queue-name { flex: 1; font-size: 14px; }
+.queue-del { color: #E74C3C; font-size: 16px; padding: 2px 6px; }
+.queue-add { display: flex; gap: 8px; margin-top: 10px; }
+.queue-add select { flex: 1; padding: 8px 12px; border: 1px solid #e0e4e8; border-radius: 6px; font-size: 14px; }
+.queue-empty { color: #888; font-size: 13px; padding: 12px 0; }
+
+/* Records */
+.record-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #f5f5f5; }
+.record-row:last-child { border-bottom: none; }
+.record-name { font-size: 14px; font-weight: 500; }
+.record-time { font-size: 12px; color: #888; margin-top: 2px; }
+.record-type { font-size: 12px; padding: 3px 10px; border-radius: 20px; }
+.record-type.random { background: #E8F4FD; color: #4A90D9; }
+.record-type.force { background: #FFF3E0; color: #E67E22; }
+.records-empty { text-align: center; padding: 40px; color: #888; }
+
+/* Toast */
+.toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: #333; color: #fff; padding: 10px 24px; border-radius: 8px; font-size: 14px; z-index: 999; opacity: 0; transition: opacity .3s; pointer-events: none; }
+.toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<!-- Login Page -->
+<div class="login-page" id="loginPage">
+  <div class="login-card">
+    <h2>管理后台</h2>
+    <div class="login-error" id="loginError">密码错误</div>
+    <input type="password" id="loginPwd" placeholder="请输入管理密码" onkeydown="if(event.key==='Enter')doLogin()">
+    <button onclick="doLogin()">登 录</button>
+  </div>
+</div>
+
+<!-- Admin Page -->
+<div class="admin-page" id="adminPage">
+  <div class="admin-header">
+    <h1>大转盘抽奖 - 管理后台</h1>
+    <button onclick="doLogout()">退出登录</button>
+  </div>
+  <div class="admin-body">
+
+    <!-- Award Config -->
+    <div class="section">
+      <h2>奖项配置</h2>
+      <div id="awardEditor"></div>
+      <div class="btn-row">
+        <button class="btn btn-outline" onclick="addAward()">+ 新增奖项</button>
+        <button class="btn btn-ghost" onclick="equalizeWeights()">均分权重</button>
+        <button class="btn btn-primary" onclick="saveConfig()" style="margin-left:auto;">保存配置</button>
+      </div>
+    </div>
+
+    <!-- Force Queue -->
+    <div class="section">
+      <h2>控奖队列</h2>
+      <div id="forceQueueList"></div>
+      <div class="queue-add">
+        <select id="queueSelect"></select>
+        <button class="btn btn-primary" onclick="addToQueue()">加入队列</button>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-danger" onclick="clearQueue()">清空队列</button>
+        <button class="btn btn-primary" onclick="saveQueue()" style="margin-left:auto;">保存队列</button>
+      </div>
+    </div>
+
+    <!-- Records -->
+    <div class="section">
+      <h2>中奖记录</h2>
+      <div id="recordsList"></div>
+      <div class="btn-row">
+        <button class="btn btn-danger" onclick="clearRecords()">清空所有记录</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const API = '/api';
+let token = sessionStorage.getItem('admin_token') || '';
+let config = { awardList: [], forceQueue: [], rotateTime: 5 };
+let records = { recordList: [] };
+
+// ===== Auth =====
+async function doLogin() {
+  const pwd = document.getElementById('loginPwd').value;
+  try {
+    const res = await fetch(`${API}/admin/login`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: pwd })
+    });
+    const data = await res.json();
+    if (res.ok) {
+      token = data.token;
+      sessionStorage.setItem('admin_token', token);
+      showAdmin();
+    } else {
+      document.getElementById('loginError').style.display = 'block';
+    }
+  } catch (e) { showToast('连接失败'); }
+}
+
+function doLogout() {
+  token = '';
+  sessionStorage.removeItem('admin_token');
+  document.getElementById('loginPage').style.display = 'flex';
+  document.getElementById('adminPage').style.display = 'none';
+}
+
+async function showAdmin() {
+  document.getElementById('loginPage').style.display = 'none';
+  document.getElementById('adminPage').style.display = 'block';
+  await loadData();
+}
+
+// ===== Data Loading =====
+async function loadData() {
+  try {
+    const [cfgRes, recRes] = await Promise.all([
+      fetch(`${API}/config`),
+      fetch(`${API}/records`)
+    ]);
+    config = await cfgRes.json();
+    records = await recRes.json();
+    renderAwardEditor();
+    renderForceQueue();
+    renderRecords();
+  } catch (e) { showToast('加载数据失败'); }
+}
+
+// ===== Award Editor =====
+function renderAwardEditor() {
+  const container = document.getElementById('awardEditor');
+  container.innerHTML = '';
+  config.awardList.forEach((award, i) => {
+    const row = document.createElement('div');
+    row.className = 'award-row';
+    row.innerHTML = `
+      <div class="color-pick" style="background:${award.color}">
+        <input type="color" value="${award.color}" onchange="onColorChange(${i}, this.value, this.parentElement)">
+      </div>
+      <input class="award-name" type="text" value="${escAttr(award.name)}" onchange="config.awardList[${i}].name=this.value||'未命名'">
+      <div class="weight-ctrl">
+        <input type="range" min="1" max="100" value="${award.weight}" oninput="config.awardList[${i}].weight=parseInt(this.value);this.nextElementSibling.textContent=this.value">
+        <span>${award.weight}</span>
+      </div>
+      <button class="award-del" onclick="deleteAward(${i})">&times;</button>
+    `;
+    container.appendChild(row);
+  });
+}
+
+function onColorChange(idx, color, el) {
+  config.awardList[idx].color = color;
+  el.style.background = color;
+}
+
+function addAward() {
+  if (config.awardList.length >= 12) { showToast('最多12个奖项'); return; }
+  const colors = ['#F5A623','#E8734A','#F7DC6F','#E74C3C','#F0B27A','#F1948A','#FAD7A0','#EC7063','#F39C12','#E67E22','#F9E79F','#F1C40F'];
+  config.awardList.push({
+    id: Math.random().toString(36).substr(2, 9),
+    name: '奖项' + (config.awardList.length + 1),
+    color: colors[config.awardList.length % colors.length],
+    weight: 1
+  });
+  renderAwardEditor();
+}
+
+function deleteAward(idx) {
+  if (config.awardList.length <= 2) { showToast('至少保留2个奖项'); return; }
+  config.awardList.splice(idx, 1);
+  renderAwardEditor();
+}
+
+function equalizeWeights() {
+  const w = Math.max(1, Math.round(100 / config.awardList.length));
+  config.awardList.forEach(a => a.weight = Math.min(w, 100));
+  renderAwardEditor();
+}
+
+async function saveConfig() {
+  config.awardList.forEach(a => {
+    a.name = (a.name || '').trim() || '未命名';
+    a.weight = Math.max(1, Math.min(100, Math.round(a.weight)));
+  });
+  try {
+    const res = await fetch(`${API}/admin/config`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ awardList: config.awardList, rotateTime: config.rotateTime })
+    });
+    if (res.ok) { showToast('配置已保存'); }
+    else { const d = await res.json(); showToast(d.error || '保存失败'); }
+  } catch (e) { showToast('保存失败'); }
+}
+
+// ===== Force Queue =====
+function renderForceQueue() {
+  const container = document.getElementById('forceQueueList');
+  const select = document.getElementById('queueSelect');
+  container.innerHTML = '';
+  select.innerHTML = '';
+
+  config.awardList.forEach(a => {
+    const opt = document.createElement('option');
+    opt.value = a.id; opt.textContent = a.name;
+    select.appendChild(opt);
+  });
+
+  const queue = config.forceQueue || [];
+  if (queue.length === 0) {
+    container.innerHTML = '<div class="queue-empty">暂无控奖，抽奖将随机进行</div>';
+  } else {
+    queue.forEach((awardId, qi) => {
+      const award = config.awardList.find(a => a.id === awardId);
+      const name = award ? award.name : '未知';
+      const color = award ? award.color : '#999';
+      const item = document.createElement('div');
+      item.className = 'queue-item';
+      item.innerHTML = `
+        <span class="queue-num">${qi + 1}.</span>
+        <span class="queue-dot" style="background:${color}"></span>
+        <span class="queue-name">${escHtml(name)}</span>
+        <button class="queue-del" onclick="removeFromQueue(${qi})">&times;</button>
+      `;
+      container.appendChild(item);
+    });
+  }
+}
+
+function addToQueue() {
+  const select = document.getElementById('queueSelect');
+  if (!select.value) return;
+  if (!config.forceQueue) config.forceQueue = [];
+  config.forceQueue.push(select.value);
+  renderForceQueue();
+}
+
+function removeFromQueue(qi) {
+  config.forceQueue.splice(qi, 1);
+  renderForceQueue();
+}
+
+function clearQueue() {
+  config.forceQueue = [];
+  renderForceQueue();
+}
+
+async function saveQueue() {
+  try {
+    const res = await fetch(`${API}/admin/force-queue`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ queue: config.forceQueue || [] })
+    });
+    if (res.ok) showToast('队列已保存');
+    else { const d = await res.json(); showToast(d.error || '保存失败'); }
+  } catch (e) { showToast('保存失败'); }
+}
+
+// ===== Records =====
+function renderRecords() {
+  const container = document.getElementById('recordsList');
+  if (!records.recordList || records.recordList.length === 0) {
+    container.innerHTML = '<div class="records-empty">暂无记录</div>';
+    return;
+  }
+  container.innerHTML = records.recordList.map(r => `
+    <div class="record-row">
+      <div>
+        <div class="record-name">${escHtml(r.award_name || r.awardName)}</div>
+        <div class="record-time">${escHtml(r.time)}</div>
+      </div>
+      <span class="record-type ${r.type}">${r.type === 'force' ? '指定' : '随机'}</span>
+    </div>
+  `).join('');
+}
+
+async function clearRecords() {
+  if (!records.recordList || records.recordList.length === 0) { showToast('暂无记录'); return; }
+  if (!confirm('确定清空所有记录？')) return;
+  try {
+    const res = await fetch(`${API}/admin/records`, {
+      method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (res.ok) { records = { recordList: [] }; renderRecords(); showToast('记录已清空'); }
+  } catch (e) { showToast('操作失败'); }
+}
+
+// ===== Utils =====
+function escHtml(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+function escAttr(s) { return s.replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
+let toastTimer;
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2000);
+}
+
+// ===== Init =====
+if (token) showAdmin();
+</script>
+</body>
+</html>
