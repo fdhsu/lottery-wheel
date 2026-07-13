@@ -134,6 +134,8 @@ const canvas = document.getElementById('wheelCanvas');
 const ctx = canvas.getContext('2d');
 
 // ===== Init: Load from API =====
+let lastConfigHash = '';
+
 async function init() {
   try {
     const [cfgRes, recRes] = await Promise.all([fetch(`${API}/config`), fetch(`${API}/records`)]);
@@ -148,6 +150,27 @@ async function init() {
   drawWheel();
   updateGoButton();
   renderRecords();
+
+  // Store initial config hash for change detection
+  lastConfigHash = JSON.stringify(config.awardList.sort((a,b) => a.id.localeCompare(b.id)));
+
+  // Poll for config changes every 3 seconds
+  setInterval(async () => {
+    try {
+      const res = await fetch(`${API}/config`);
+      const newConfig = await res.json();
+      const newHash = JSON.stringify(newConfig.awardList.sort((a,b) => a.id.localeCompare(b.id)));
+      if (newHash !== lastConfigHash) {
+        lastConfigHash = newHash;
+        config = newConfig;
+        drawWheel();
+        updateGoButton();
+        console.log('[Auto-refresh] Config updated');
+      }
+    } catch (e) {
+      // Silently fail on network issues
+    }
+  }, 3000);
 
   let resizeTimer;
   window.addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(drawWheel, 150); });
