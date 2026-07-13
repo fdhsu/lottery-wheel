@@ -1,7 +1,7 @@
 const jwt = require('jsonwebtoken');
 
 // Default admin password - change this!
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'raiyi321';
 const JWT_SECRET = process.env.JWT_SECRET || 'lottery-secret-key-2024';
 
 function authMiddleware(req, res, next) {
