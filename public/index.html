@@ -211,12 +211,20 @@ function drawWheel() {
   ctx.beginPath(); ctx.arc(cx, cy, sepR, 0, Math.PI * 2);
   ctx.strokeStyle = '#E8C87A'; ctx.lineWidth = 3; ctx.stroke();
 
-  // --- Rotating sectors: white & cream alternating ---
+  // --- Rotating sectors: multi-color carnival palette ---
   ctx.save(); ctx.translate(cx, cy); ctx.rotate(currentRotation);
   const wheelR = sepR - 5;
   let startAngle = 0;
 
-  const sectorColors = ['#FFFFFF', '#F5E6D0'];
+  // 3-color warm carnival palette, ensure no adjacent sectors share a color
+  const sectorColors = ['#FFF9F0', '#F0DCC0', '#FDE8EF'];
+
+  // Pre-compute color index for each sector, fixing wraparound conflict
+  const colorIndices = awards.map((_, i) => i % 3);
+  if (awards.length >= 3 && colorIndices[0] === colorIndices[awards.length - 1]) {
+    // First and last would be same color — shift last to a different one
+    colorIndices[awards.length - 1] = (colorIndices[0] + 1) % 3;
+  }
 
   awards.forEach((award, i) => {
     const sliceAngle = (award.weight / totalWeight) * Math.PI * 2;
@@ -226,22 +234,22 @@ function drawWheel() {
 
     // Subtle radial gradient for depth
     const grad = ctx.createRadialGradient(0, 0, 0, 0, 0, wheelR);
-    const baseColor = sectorColors[i % 2];
-    grad.addColorStop(0, 'rgba(255,255,255,0.5)');
-    grad.addColorStop(0.4, baseColor);
+    const baseColor = sectorColors[colorIndices[i]];
+    grad.addColorStop(0, 'rgba(255,255,255,0.6)');
+    grad.addColorStop(0.35, baseColor);
     grad.addColorStop(1, baseColor);
     ctx.fillStyle = grad;
     ctx.fill();
 
-    // Sector divider lines
-    ctx.strokeStyle = 'rgba(200,180,150,0.3)'; ctx.lineWidth = 1; ctx.stroke();
+    // Sector divider lines (warm neutral)
+    ctx.strokeStyle = 'rgba(200,175,140,0.3)'; ctx.lineWidth = 1; ctx.stroke();
 
-    // Award name text
+    // Award name text (deep red)
     ctx.save(); ctx.rotate(startAngle + sliceAngle / 2);
     const textMaxWidth = wheelR * 0.6;
     const fontSize = calcFontSize(award.name, textMaxWidth, sliceAngle, wheelR);
     ctx.font = `700 ${fontSize}px -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif`;
-    ctx.fillStyle = '#C0392B';
+    ctx.fillStyle = '#B71C1C';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.shadowColor = 'rgba(0,0,0,0.06)';
     ctx.shadowBlur = 1;
@@ -360,14 +368,28 @@ function playResultSound() {
   } catch (e) {}
 }
 
+let selectedVoice = null;
+
+// Pre-load and cache a female Chinese voice
+function loadFemaleVoice() {
+  const voices = window.speechSynthesis.getVoices();
+  if (!voices.length) return;
+  const zhVoices = voices.filter(v => v.lang.startsWith('zh'));
+  const femaleKeywords = ['female', 'woman', 'girl', 'ting', 'mei', 'lili', 'sin-ji', 'xiaoyan', 'xiaoxiao', 'yunyang', 'huihui'];
+  selectedVoice = zhVoices.find(v => femaleKeywords.some(k => v.name.toLowerCase().includes(k))) || zhVoices[0] || null;
+}
+if (window.speechSynthesis) {
+  loadFemaleVoice();
+  window.speechSynthesis.onvoiceschanged = loadFemaleVoice;
+}
+
 function speakResult(name) {
   try {
     if (!window.speechSynthesis) return;
     window.speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance('恭喜，抽中了' + name);
-    u.lang = 'zh-CN'; u.pitch = 1.1;
-    const zh = window.speechSynthesis.getVoices().find(v => v.lang.startsWith('zh'));
-    if (zh) u.voice = zh;
+    u.lang = 'zh-CN'; u.pitch = 1.15; u.rate = 0.95;
+    if (selectedVoice) u.voice = selectedVoice;
     window.speechSynthesis.speak(u);
   } catch (e) {}
 }
