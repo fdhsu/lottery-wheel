@@ -218,7 +218,7 @@ function onColorChange(idx, color, el) {
 }
 
 function addAward() {
-  if (config.awardList.length >= 12) { showToast('最多12个奖项'); return; }
+  if (config.awardList.length >= 24) { showToast('最多24个奖项'); return; }
   const colors = ['#F5A623','#E8734A','#F7DC6F','#E74C3C','#F0B27A','#F1948A','#FAD7A0','#EC7063','#F39C12','#E67E22','#F9E79F','#F1C40F'];
   config.awardList.push({
     id: Math.random().toString(36).substr(2, 9),
